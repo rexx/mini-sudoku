@@ -19,6 +19,18 @@
     <link rel="icon" type="image/svg+xml" href="/mini-sudoku/icon.svg" />
     <link rel="apple-touch-icon" href="/mini-sudoku/apple-touch-icon.png" />
 
+    <!-- Google tag (gtag.js). Loaded async and cross-origin, so it is outside
+         the service worker's same-origin runtime cache: offline it simply
+         never arrives, and gtag() calls keep queueing into dataLayer. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MZDCQ8P6ZE"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MZDCQ8P6ZE');
+    </script>
+
     <!-- Inline so the dark backdrop and skeleton paint from the cached HTML
          alone, before the JS bundle is fetched or parsed. No external
          stylesheet or webfont is referenced here: an offline cold start must

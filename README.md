@@ -10,16 +10,16 @@ A clean, focused 4x4 Sudoku puzzle game with difficulty selection, answer verifi
 - Answer verification, optional instant validation
 - Synthesised sound effects, light and dark themes
 - Bilingual interface (English / Traditional Chinese)
-- **Fully offline.** Installable as a PWA; puzzles are generated on device and no feature needs the network.
+- **Fully offline.** Installable as a PWA; puzzles are generated on device and no gameplay feature needs the network.
 
 ## Offline behaviour
 
-The app makes no network requests at runtime: puzzles come from `src/utils/sudoku4x4.ts` and sound is synthesised with the Web Audio API, so there is nothing to degrade when the connection drops.
+No gameplay depends on the network: puzzles come from `src/utils/sudoku4x4.ts` and sound is synthesised with the Web Audio API, so there is nothing to degrade when the connection drops. The page does make one request, the Google Analytics tag described under [Analytics](#analytics), and it is deliberately kept off the critical path.
 
 Three things keep an offline cold start working, and all three have to stay in step:
 
-- **No external startup dependency.** Fonts resolve from the OS font stack defined in `src/index.css`; there are no webfonts, no CDN scripts, and no external stylesheets. An HTTP cache alone would not be enough, because `max-age` has no "fall back to cache when the network fails" semantics.
-- **The app shell is precached.** `vite-plugin-pwa` emits a service worker that precaches `index.html`, the JS and CSS chunks, `manifest.json`, and every icon. Runtime caching uses `StaleWhileRevalidate`, which serves the cache immediately rather than waiting out a network timeout.
+- **No blocking external dependency.** Fonts resolve from the OS font stack defined in `src/index.css`; there are no webfonts and no external stylesheets. The analytics tag is the only external script and it is `async`, so it never holds up first paint. An HTTP cache alone would not be enough for the rest, because `max-age` has no "fall back to cache when the network fails" semantics.
+- **The app shell is precached.** `vite-plugin-pwa` emits a service worker that precaches `index.html`, the JS and CSS chunks, `manifest.json`, and every icon. Runtime caching uses `StaleWhileRevalidate`, which serves the cache immediately rather than waiting out a network timeout, and is scoped to same-origin URLs so cross-origin requests never enter the cache.
 - **`base`, `start_url`, `scope`, and `id` all point at `/mini-sudoku/`.** These live in [vite.config.ts](vite.config.ts) and [public/manifest.json](public/manifest.json). A mismatch still installs and still shows the right icon, but the offline launch requests a URL the service worker never cached.
 
 Renaming the repository means updating all four values plus the absolute icon paths in [index.html](index.html).
@@ -34,6 +34,12 @@ Service workers need a secure context, so a LAN IP over plain HTTP cannot be use
 4. Play a full puzzle offline.
 
 On iOS, an installation made before these changes may keep stale start-URL and service-worker state. If an old install fails to launch offline while a fresh one succeeds, delete it and re-add it from Safari.
+
+## Analytics
+
+[index.html](index.html) loads the Google Analytics 4 tag (`gtag.js`) for property `G-MZDCQ8P6ZE`. It is the only third-party request the app makes.
+
+It cannot break an offline session. The script is `async`, so it never blocks parsing or first paint, and it is cross-origin, so the service worker's same-origin runtime cache ignores it. With no network the request just fails, `gtag()` calls accumulate in `window.dataLayer`, and nothing else notices.
 
 ## Tech Stack
 
