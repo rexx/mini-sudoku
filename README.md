@@ -90,6 +90,13 @@ Two rules for the artwork, both of which the current mark satisfies:
 - **Avoid area fills.** A conservative default, not a mechanism.
 - **The mark must stand on its own,** because no backdrop is guaranteed. Verify by compositing the icon over white, iOS grey and near-black and confirming it reads on all three. This is what the saturation check proxies for: the mark was previously near-white at saturation 0.08 and vanished on a light tile; it now measures 0.92.
 
+If a tile comes out the wrong colour, colour is the lever — two things it is **not**:
+
+- Not the silhouette. The version that vanished and the current one have identical transparency, 83.0% each, so coverage cannot account for the difference; only the stroke colours changed. (`git show 72004ca:public/apple-touch-icon.png` to re-measure.)
+- Not `background_color` / `theme_color`. Both were already `#020617` in the very commit that shipped the light tile, so they demonstrably do not drive it.
+
+Single sample, and the current icon is not device-confirmed, so this narrows where to look rather than establishing a rule.
+
 For anything beyond those two rules — where the thresholds come from, what is still unexplained, and how to verify on a device — read `docs/app-icon-ios-liquid-glass.md` in the Cozy-Pocket project. Read it rather than expecting this section to be current: it has already carried a claim that document later retracted.
 
 Not yet confirmed on a home screen: whether the recoloured icon gets the treatment at all.
