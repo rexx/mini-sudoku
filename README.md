@@ -17,7 +17,7 @@ React 19, TypeScript, Vite 6, Tailwind CSS 4, Motion, Lucide icons.
 
 ## Run Locally
 
-**Prerequisites:** Node.js 20+
+**Prerequisites:** Node.js 24+
 
 ```bash
 npm install
