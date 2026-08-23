@@ -87,7 +87,9 @@ The saturation threshold exists because transparency alone is not sufficient, wh
 
 Keeping the mark legible against a light backdrop as well as a dark one is worth more than betting on which one iOS picks.
 
-To opt out of Liquid Glass entirely and control the background directly, set `flatten: true` on the iOS and Android outputs in the script; `BACKDROP` is then baked in and the saturation of the mark no longer matters.
+Both thresholds only apply to a mark that ships **transparent**, which is the mode this project uses. They measure how iOS will treat artwork it has to generate a backdrop for; against a flattened, fully opaque icon they measure nothing. The script detects that case and skips both checks rather than reporting figures that look like verdicts — a transparency reading of 0% on deliberately baked-in artwork previously produced the advice "the mark is too solid, remove a filled area", which would have meant damaging a perfectly good SVG.
+
+To opt out of Liquid Glass entirely and control the background directly, set `flatten: true` on the iOS and Android outputs in the script. `BACKDROP` is then baked in, the saturation of the mark stops mattering, and the checks turn themselves off.
 
 ## Deployment
 

@@ -110,12 +110,31 @@ const icoImages = await Promise.all(
 await writeFile(path.join(publicDir, 'favicon.ico'), buildIco(icoImages));
 console.log(`${'favicon.ico'.padEnd(28)} ${ICO_SIZES.join('/')}px  ${BACKDROP}`);
 
-// Two properties of the transparent output decide whether iOS's generated
-// backdrop works, so measure both in one pass.
+// Two properties decide whether iOS's generated backdrop works, so measure both
+// in one pass.
+//
+// BOTH only mean anything for an output that ships transparent. A flattened
+// output already carries BACKDROP, so iOS generates no backdrop for it: the
+// transparency figure is 0 by construction and the saturation figure describes
+// a mark nothing is derived from. Reporting them anyway produced actively wrong
+// advice - "the mark is too solid, remove a filled area" against artwork whose
+// backdrop was deliberately baked in - so skip both when the probe is flattened.
 //
 // An alpha channel alone proves nothing for the first one - `sips -g hasAlpha`
 // reports yes for icons that have no transparent pixel at all - so count the
 // actual values.
+const probeIsTransparent = OUTPUTS.some(
+  (output) => output.out === COVERAGE_PROBE && !output.flatten,
+);
+
+if (!probeIsTransparent) {
+  console.log(
+    `\n${COVERAGE_PROBE} is flattened, so it opts out of the iOS Liquid Glass treatment.\n` +
+      'Neither the transparency nor the saturation check applies; skipping both.',
+  );
+  process.exit(0);
+}
+
 const { data, info } = await sharp(path.join(publicDir, COVERAGE_PROBE))
   .ensureAlpha()
   .raw()
