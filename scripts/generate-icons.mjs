@@ -18,10 +18,17 @@ const RASTER_DENSITY = 384;
 
 // `flatten` decides who paints the background behind the mark:
 //   false - ship transparent pixels. iOS reads the opaque pixels as the icon's
-//           foreground and generates its own backdrop plus Liquid Glass lighting;
-//           baking in an opaque background opts the icon out of that treatment.
+//           foreground and generates its own backdrop plus Liquid Glass
+//           lighting; baking in an opaque background opts the icon out of that.
 //   true  - bake BACKDROP in. Browser tab bars and Android's adaptive-icon mask
 //           provide no generated backdrop, so the line art needs its own.
+//
+// The generated backdrop is derived from the mark's own colours, so a
+// transparent output only works if the mark is SATURATED. Measured on device:
+// a near-white mark (mean saturation 0.08) made iOS generate a light backdrop,
+// which rendered the icon almost invisible; a saturated one (0.86) got a dark
+// tinted backdrop. Hence the saturation check at the end of this script - it
+// guards the same output the transparency check does.
 const OUTPUTS = [
   { out: 'favicon-16x16.png', size: 16, flatten: true },
   { out: 'favicon-32x32.png', size: 32, flatten: true },
@@ -40,6 +47,13 @@ const ICO_SIZES = [16, 32, 48];
 // real rule, which is "do not fill enclosed areas". Warn below the lowest ratio
 // observed on device to still get the treatment.
 const MIN_TRANSPARENT_RATIO = 0.763;
+
+// Mean saturation of the mark's opaque pixels, which is what iOS builds its
+// generated backdrop from. Two on-device data points: 0.86 produced a dark
+// tinted backdrop, 0.08 produced a light backdrop that near-white line art
+// vanished against. The threshold sits between them, nearer the failure.
+const MIN_SATURATION = 0.5;
+
 const COVERAGE_PROBE = 'apple-touch-icon.png';
 
 const SOURCE = 'icon.svg';
@@ -96,27 +110,62 @@ const icoImages = await Promise.all(
 await writeFile(path.join(publicDir, 'favicon.ico'), buildIco(icoImages));
 console.log(`${'favicon.ico'.padEnd(28)} ${ICO_SIZES.join('/')}px  ${BACKDROP}`);
 
-// An alpha channel alone proves nothing here - `sips -g hasAlpha` reports yes
-// for icons that have no transparent pixel at all - so count the actual values.
+// Two properties of the transparent output decide whether iOS's generated
+// backdrop works, so measure both in one pass.
+//
+// An alpha channel alone proves nothing for the first one - `sips -g hasAlpha`
+// reports yes for icons that have no transparent pixel at all - so count the
+// actual values.
 const { data, info } = await sharp(path.join(publicDir, COVERAGE_PROBE))
   .ensureAlpha()
   .raw()
   .toBuffer({ resolveWithObject: true });
 
 let transparent = 0;
+let saturationTotal = 0;
+let opaque = 0;
+
 for (let i = 0; i < data.length; i += info.channels) {
-  if (data[i + 3] === 0) transparent += 1;
+  if (data[i + 3] === 0) {
+    transparent += 1;
+    continue;
+  }
+  // Ignore edge pixels: antialiasing blends them toward transparent, which
+  // drags their saturation down and would understate the mark's real colour.
+  if (data[i + 3] < 200) continue;
+
+  const max = Math.max(data[i], data[i + 1], data[i + 2]);
+  const min = Math.min(data[i], data[i + 1], data[i + 2]);
+  saturationTotal += max === 0 ? 0 : (max - min) / max;
+  opaque += 1;
 }
 
-const ratio = transparent / (info.width * info.height);
-const percent = (ratio * 100).toFixed(1);
+const transparentRatio = transparent / (info.width * info.height);
+const saturation = opaque === 0 ? 0 : saturationTotal / opaque;
 
-if (ratio < MIN_TRANSPARENT_RATIO) {
+console.log(
+  `\n${COVERAGE_PROBE}  ${(transparentRatio * 100).toFixed(1)}% transparent, ` +
+    `mean saturation ${saturation.toFixed(2)}`,
+);
+
+if (transparentRatio < MIN_TRANSPARENT_RATIO) {
   console.log(
-    `\nWARNING  ${COVERAGE_PROBE} is ${percent}% fully transparent, below the ${MIN_TRANSPARENT_RATIO * 100}% that was\n` +
-      `         observed to still get the iOS Liquid Glass treatment. The mark is too solid:\n` +
-      `         remove a filled area or thin the strokes - shrinking it does not help much.`,
+    `WARNING  below the ${(MIN_TRANSPARENT_RATIO * 100).toFixed(1)}% transparency observed to still get the iOS\n` +
+      `         Liquid Glass treatment. The mark is too solid: remove a filled area or thin\n` +
+      `         the strokes - shrinking it does not help much.`,
   );
-} else {
-  console.log(`\n${COVERAGE_PROBE} is ${percent}% fully transparent - at or above the ratio observed to get Liquid Glass.`);
+}
+
+if (saturation < MIN_SATURATION) {
+  console.log(
+    `WARNING  below the ${MIN_SATURATION} mean saturation needed for iOS to generate a DARK\n` +
+      `         backdrop. Measured on device: 0.86 produced a dark tinted backdrop, 0.08 a\n` +
+      `         light one that the mark then disappeared against. Saturate the stroke\n` +
+      `         colours in ${SOURCE}, or set flatten: true to bake BACKDROP in and opt out\n` +
+      `         of Liquid Glass entirely.`,
+  );
+}
+
+if (transparentRatio >= MIN_TRANSPARENT_RATIO && saturation >= MIN_SATURATION) {
+  console.log('Both within the range observed to produce a dark Liquid Glass icon.');
 }
