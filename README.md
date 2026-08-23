@@ -74,7 +74,20 @@ Every raster icon in `public/` is generated from `public/icon.svg`:
 npm run icons:generate
 ```
 
-Edit the SVG, re-run the script, and commit the output. The script also reports how much of `apple-touch-icon.png` is transparent, which is the proxy for whether iOS will apply its Liquid Glass treatment to the mark.
+Edit the SVG, re-run the script, and commit the output.
+
+The script measures two properties of `apple-touch-icon.png` and warns on either, because both failure modes are invisible in the build output and only show up on a device home screen:
+
+| Property | Threshold | What it governs |
+| --- | --- | --- |
+| Transparency | at least 76.3% | Whether iOS applies the Liquid Glass treatment at all. A mark that fills too much of the canvas is opted out. |
+| Mean saturation | at least 0.5 | Which backdrop iOS generates behind the mark. |
+
+The saturation threshold exists because transparency alone is not sufficient, which is easy to get wrong: the icon qualified for Liquid Glass and still rendered as near-invisible pale line art, because iOS derives the generated backdrop from the mark's own colours. Two on-device data points bracket the threshold — mean saturation 0.86 produced a dark tinted backdrop, 0.08 produced a light backdrop that near-white strokes disappeared against. The current mark measures 0.92.
+
+Keeping the mark legible against a light backdrop as well as a dark one is worth more than betting on which one iOS picks.
+
+To opt out of Liquid Glass entirely and control the background directly, set `flatten: true` on the iOS and Android outputs in the script; `BACKDROP` is then baked in and the saturation of the mark no longer matters.
 
 ## Deployment
 
