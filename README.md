@@ -87,7 +87,7 @@ The script checks two things and reports a third:
 
 The maskable check measures the generated result rather than trusting `scale`, because reshaping `icon.svg` moves the outermost ink and nothing else would catch a `scale` that no longer buys back enough.
 
-The third figure — ink coverage, component count and cavity perimeter — is printed without a threshold, and that is deliberate.
+It also fingerprints the mark — ink coverage, component count, cavity perimeter — and warns when those drift from the shape that was checked on a device. The warning claims no threshold, only that the result has gone back to being unknown.
 
 ### Why there is no rule for the iOS home screen
 
@@ -110,7 +110,7 @@ What decides it is not known. Ten marks were checked on one iPhone, five composi
 
 Two marks measuring 0.00 perimeter sit on opposite sides. So do two at 0 cavities and two at 1 component. Four rules were built on these numbers over one day — a transparency floor, an edge-margin band, a cavity-area limit, a cavity-perimeter limit — and a device falsified each one. Colour is ruled out (the pocket art composites in this palette; this mark stayed flat in cyan), and so is the page: both marks behave the same whether the page declares `sizes`, declares `apple-mobile-web-app-capable`, or neither.
 
-**So the geometry in `icon.svg` is a verified sample, not an instance of a rule.** `public/apple-touch-icon.png` is byte-identical to the file that produced a composited tile. Change the shape and that evidence no longer applies: re-check by adding the page to a home screen and looking at the tile.
+**So the geometry in `icon.svg` is a verified sample, not an instance of a rule.** `public/apple-touch-icon.png` is byte-identical to the file that produced a composited tile. Change the shape and that evidence no longer applies — which is what the fingerprint warning is for: re-check by adding the page to a home screen, then update the `VERIFIED_` constants in the generator.
 
 Serving variants from separate URLs is the cheap way to do that — each becomes its own web clip, so several can sit on one home screen at once and none of them collides with the icon cache that otherwise forces a delete-and-re-add between rounds.
 

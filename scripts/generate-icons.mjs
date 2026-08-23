@@ -51,8 +51,13 @@ const ICO_SIZES = [16, 32, 48];
 // perimeter landed on opposite sides. Four rules built on those numbers were
 // each falsified within a day of being written.
 //
-// So the figures below are printed for comparison against a known-good mark,
-// not checked against a limit. The only reliable test is a device.
+// What can be checked is whether the artwork is still the one that was tried on
+// a device. These are that shape's fingerprint; drifting from them means the
+// result is unknown again, not that it got worse.
+const VERIFIED_INK_RATIO = 0.241;
+const VERIFIED_COMPONENTS = 16;
+const VERIFIED_CAVITY_PERIMETER = 0.0;
+
 // Pixels at or above this alpha count as ink. Antialiased edges land either
 // side of it, but the value is pinned by a real sample: an icon whose interior
 // was filled at 15% opacity failed on a device, and only a threshold in this
@@ -309,11 +314,12 @@ for (let seed = 0; seed < W * H; seed += 1) {
   }
 }
 
+const inkRatio = inkPixels / (W * H);
 const innerPerimeter = boundary / W;
 const saturation = opaque === 0 ? 0 : saturationTotal / opaque;
 
 console.log(
-  `\n${COVERAGE_PROBE}  ${(inkPixels / (W * H) * 100).toFixed(1)}% ink, ` +
+  `\n${COVERAGE_PROBE}  ${(inkRatio * 100).toFixed(1)}% ink, ` +
     `${components} component${components === 1 ? '' : 's'}, ` +
     `cavity perimeter ${innerPerimeter.toFixed(2)}, mean saturation ${saturation.toFixed(2)}`,
 );
@@ -327,7 +333,19 @@ if (saturation < MIN_SATURATION) {
   );
 }
 
-console.log(
-  `Reference: the shape in ${SOURCE} measured 24.1% ink, 16 components, perimeter 0.00\n` +
-    'when a device confirmed iOS composites it. Numbers that drift from those describe\ndifferent artwork, not a worse one - add it to a home screen and look at the tile.',
-);
+const drifted =
+  Math.abs(inkRatio - VERIFIED_INK_RATIO) > 0.005 ||
+  components !== VERIFIED_COMPONENTS ||
+  Math.abs(innerPerimeter - VERIFIED_CAVITY_PERIMETER) > 0.02;
+
+if (drifted) {
+  console.log(
+    `WARNING  the mark no longer matches the shape that was checked on a device\n` +
+      `         (${(VERIFIED_INK_RATIO * 100).toFixed(1)}% ink, ${VERIFIED_COMPONENTS} components, perimeter ${VERIFIED_CAVITY_PERIMETER.toFixed(2)}), so whether iOS\n` +
+      `         composites it is unknown again - no property of the artwork predicts that.\n` +
+      `         Add the page to an iPhone home screen: a dark tile means iOS composited the\n` +
+      `         mark, a white one means it did not. Then update the VERIFIED_ constants.`,
+  );
+} else {
+  console.log(`Matches the shape a device confirmed iOS composites.`);
+}
