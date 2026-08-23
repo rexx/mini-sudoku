@@ -19,8 +19,8 @@ const RASTER_DENSITY = 384;
 // `flatten` decides who paints the background behind the mark:
 //   false - ship transparent pixels and let iOS supply the backdrop, which is
 //           what makes the mark eligible for Liquid Glass. Baking an opaque
-//           background in is understood to opt the icon out of that treatment
-//           (inherited from the Cozy-Pocket script, not verified here).
+//           background in opts the icon out: the Cozy-Pocket notes record a
+//           fully opaque icon (0% transparent) getting no glass on device.
 //   true  - bake BACKDROP in. Browser tab bars and Android's adaptive-icon mask
 //           provide no generated backdrop, so the line art needs its own.
 //
@@ -43,27 +43,34 @@ const OUTPUTS = [
 // request it (bookmarks, some browser chrome).
 const ICO_SIZES = [16, 32, 48];
 
-// A tripwire, not a spec. The premise is that iOS only applies Liquid Glass to a
-// mark thin enough to leave most of the canvas transparent, and that this ratio
-// proxies the real rule, "do not fill enclosed areas".
+// A tripwire, not a spec. Carried over from Cozy-Pocket, whose notes record five
+// on-device samples behind it: 0% and ~62% got no glass, 76.3% and 86.5% did.
 //
-// Inherited unverified from the Cozy-Pocket script this one was adapted from.
-// Nothing in this project reproduced it on a device, so treat the figure as a
-// convention carried over, not as a measurement.
+// The ratio is a PROXY and inverting the two is the trap. Those notes record the
+// actual observed rule as "filling an enclosed area kills the effect",
+// independent of that fill's opacity - the coverage figure is a side effect of
+// doing so. A small enough shape can fill its interior, still clear this bar and
+// lose the effect anyway. So check the silhouette for area fills first and treat
+// this number as the second line of defence. 62-76% is an unverified band.
+//
+// Read that document before reshaping the artwork; this script only carries the
+// cheap proxy, not the reasoning.
+// See cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md
 const MIN_TRANSPARENT_RATIO = 0.763;
 
-// Mean saturation of the mark's opaque pixels.
+// Mean saturation of the mark's opaque pixels. Local to this project, added
+// after a mark at 83.0% transparency and saturation 0.08 rendered as
+// near-invisible pale line art on a light home-screen tile.
 //
-// One failure was actually seen on a home screen: at 0.08 the mark rendered as
-// near-invisible pale line art on a light tile. The contrasting case, 0.86,
-// was reported to render dark, but only its icon file was measured here.
+// No mechanism is claimed. The Cozy-Pocket notes are silent on what colour
+// backdrop iOS generates, so nothing here explains why that tile came out light.
+// What those notes do state independently is a design constraint: the mark must
+// not depend on a background colour existing, because none is guaranteed. That
+// is exactly the failure above, so saturation stands in for "does this mark hold
+// up on its own" - which is checkable without knowing anything about iOS.
 //
-// Why they differ is NOT established - "iOS derives the backdrop from the mark's
-// colours" fits, but so does "iOS picks the backdrop by system appearance and a
-// mid-luminance mark survives either way". One screenshot cannot separate those,
-// so this is a guard against the one observed failure, not a model of iOS. The
-// durable fix is a mark legible on any backdrop; check new artwork by
-// compositing it over white, iOS grey and near-black.
+// Passing this is not the real test. Composite new artwork over white, iOS grey
+// and near-black and confirm it reads on all three.
 const MIN_SATURATION = 0.5;
 
 const COVERAGE_PROBE = 'apple-touch-icon.png';
