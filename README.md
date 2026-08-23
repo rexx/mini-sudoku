@@ -33,7 +33,9 @@ Service workers need a secure context, so a LAN IP over plain HTTP cannot be use
 3. Fully close the app, enable airplane mode, and launch it again from the home screen. It should open the app, not a browser error page.
 4. Play a full puzzle offline.
 
-On iOS, an installation made before these changes may keep stale start-URL and service-worker state. If an old install fails to launch offline while a fresh one succeeds, delete it and re-add it from Safari.
+Confirmed on an iPhone: an install made at `72004ca` launched from the home screen in airplane mode after being fully closed, three commits later, with no reinstall. So the service worker keeps serving the shell across subsequent deploys.
+
+A caveat about a convention you may see elsewhere: iOS is said to keep stale start-URL and service-worker state in an installation made *before* offline support existed, such that it fails offline while a fresh install succeeds. That cannot be checked in this repository — the manifest, the service worker and `apple-touch-icon.png` all arrived in the same commit, so no install predating offline support can exist here. If a home-screen install ever does misbehave offline, deleting and re-adding it from Safari is the cheap thing to try.
 
 ## Analytics
 
