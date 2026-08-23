@@ -1,0 +1,6 @@
+{
+  "name": "4x4 Sudoku",
+  "description": "Minimalist 4x4 Sudoku game with difficulty selection, check answer feature, dark mode, and bilingual support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
