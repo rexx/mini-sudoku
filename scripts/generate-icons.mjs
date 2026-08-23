@@ -45,37 +45,22 @@ const OUTPUTS = [
 // request it (bookmarks, some browser chrome).
 const ICO_SIZES = [16, 32, 48];
 
-// A tripwire, not a spec. Carried over from Cozy-Pocket, whose notes record five
-// on-device samples behind it: 0% and ~62% got no glass, 76.3% and 86.5% did.
-// 62-76% is an unverified band.
+// A smoke detector, not a spec: the lowest coverage observed to still get the
+// iOS Liquid Glass treatment. Carried over from Cozy-Pocket. Clearing it does
+// not guarantee the effect, and why lower values lose it is unresolved there, so
+// treat "avoid area fills" as a conservative default rather than a rule.
 //
-// WHY the 62% cases failed is unresolved. Those notes were revised 2026-08-23 to
-// retract their own earlier answer ("filling an enclosed area kills it"): native
-// layered icons get the strongest glass at near-100% coverage with large solid
-// fills, so area fill cannot be the disabling factor. Three candidates remain
-// unseparated - coverage, too little edge margin, and the effect applying but
-// large fills hiding the generated backdrop. A controlled comparison is prepared
-// there, not yet run.
-//
-// So this number is a smoke detector with an unknown mechanism behind it, and
-// "avoid area fills" is a conservative default rather than a rule. Coverage also
-// does not generalise past the single-bitmap web clip path.
-//
-// Read that document before reshaping the artwork; do not trust this comment as
-// a substitute - it has already been wrong once by lagging the source.
-// See cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md
+// Read cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md before
+// reshaping the artwork. Do not expect this comment to substitute for it: an
+// earlier version restated that document's reasoning and went stale when the
+// document retracted it. Only the constant lives here now.
 const MIN_TRANSPARENT_RATIO = 0.763;
 
-// Mean saturation of the mark's opaque pixels. Local to this project, added
-// after a mark at 83.0% transparency and saturation 0.08 rendered as
-// near-invisible pale line art on a light home-screen tile.
-//
-// No mechanism is claimed. The Cozy-Pocket notes are silent on what colour
-// backdrop iOS generates, so nothing here explains why that tile came out light.
-// What those notes do state independently is a design constraint: the mark must
-// not depend on a background colour existing, because none is guaranteed. That
-// is exactly the failure above, so saturation stands in for "does this mark hold
-// up on its own" - which is checkable without knowing anything about iOS.
+// Mean saturation of the mark's opaque pixels. This project's own threshold,
+// added after a near-white mark at saturation 0.08 vanished against a light
+// home-screen tile. No backdrop is guaranteed, so the mark has to hold up on its
+// own; saturation is a cheap stand-in for that, and needs no theory about what
+// iOS does.
 //
 // Passing this is not the real test. Composite new artwork over white, iOS grey
 // and near-black and confirm it reads on all three.

@@ -74,36 +74,25 @@ Every raster icon in `public/` is generated from `public/icon.svg`:
 npm run icons:generate
 ```
 
-Edit the SVG, re-run the script, and commit the output.
+Edit the SVG, re-run the script, and commit the output — the Pages workflow does not generate icons.
 
-The script measures two properties of `apple-touch-icon.png` and warns on either, because both failure modes are invisible in the build output and only show up on a device home screen:
+The script measures two properties of `apple-touch-icon.png`, because both failure modes are invisible in the build output and only surface on a device home screen:
 
-| Property | Threshold | What it proxies for |
+| Check | Threshold | If it warns |
 | --- | --- | --- |
-| Transparency | at least 76.3% | Whether iOS applies the Liquid Glass treatment at all. |
-| Mean saturation | at least 0.5 | Whether the mark stands up without a background behind it. |
+| Transparency | at least 76.3% | The mark may not get the iOS Liquid Glass treatment. Thin the strokes or remove a filled area. |
+| Mean saturation | at least 0.5 | The mark probably depends on a dark background existing. Saturate the stroke colours. |
 
-Both are proxies, not rules, and the distinction matters in different ways for each.
+Both only apply to a mark that ships transparent, which is the mode here. Setting `flatten: true` on the iOS and Android outputs bakes `BACKDROP` in instead, opts out of Liquid Glass, and turns both checks off — they measure nothing against an opaque icon.
 
-**Transparency.** The threshold comes from the Cozy-Pocket project's Liquid Glass notes (`docs/app-icon-ios-liquid-glass.md` in that repository, not linked here because it lives outside this one), which record five on-device samples: 0% and roughly 62% got no glass, 76.3% and 86.5% did.
+Two rules for the artwork, both of which the current mark satisfies:
 
-Read that document before reshaping the artwork, and read it rather than trusting this summary, because **why** the 62% cases failed is openly unresolved there. Those notes were revised on 2026-08-23 to retract their own earlier explanation: native layered icons get the strongest glass with near-100% coverage and large solid fills, so area fill cannot be what disables it. Three candidate causes for the PWA-path failures remain unseparated — coverage, insufficient edge margin, and the possibility that the effect applies but large fills hide the backdrop it generates. A controlled comparison is prepared there but has not been run.
+- **Avoid area fills.** A conservative default, not a mechanism.
+- **The mark must stand on its own,** because no backdrop is guaranteed. Verify by compositing the icon over white, iOS grey and near-black and confirming it reads on all three. This is what the saturation check proxies for: the mark was previously near-white at saturation 0.08 and vanished on a light tile; it now measures 0.92.
 
-Practical consequence: avoid area fills as a **conservative default**, not as a rule with a known mechanism, and treat the ratio the same way. Note also that coverage does not generalise beyond the single-bitmap web clip path this project is on.
+For anything beyond those two rules — where the thresholds come from, what is still unexplained, and how to verify on a device — read `docs/app-icon-ios-liquid-glass.md` in the Cozy-Pocket project. Read it rather than expecting this section to be current: it has already carried a claim that document later retracted.
 
-**Saturation.** This threshold is local to this project, added after a mark at 83.0% transparency and mean saturation 0.08 rendered as near-invisible pale line art on a light home-screen tile. The referenced notes are silent on what colour backdrop iOS generates, so no mechanism is claimed here either; what they do state independently, as a design constraint, is that the mark must not depend on a background colour existing, since none is guaranteed. That is precisely the failure above, so saturation is used as a cheap proxy for "does this mark stand on its own".
-
-The fix follows from the constraint rather than from any theory about iOS: the current mark measures 0.92 and was checked by compositing it over white, iOS grey and near-black, where it reads on all three. Making the mark legible against any backdrop beats predicting which backdrop appears.
-
-Still unverified here: the recoloured icon has not been confirmed on a home screen. When checking it, follow the verification section of the referenced notes. Three things from it are easy to get wrong:
-
-- Remove the old home-screen icon before re-adding, since iOS caches web clip icons and will otherwise show the previous one. To compare several versions, host them at separate URLs and add each — that sidesteps the cache instead of fighting it.
-- Compare the Light, Dark, Clear and Tinted appearances, not one.
-- To tell a system-applied effect from highlights baked into the PNG, switch to Tinted: a layered icon re-renders and keeps its depth, while baked-in lighting flattens into a single colour.
-
-Both thresholds only apply to a mark that ships **transparent**, which is the mode this project uses. They measure how iOS will treat artwork it has to generate a backdrop for; against a flattened, fully opaque icon they measure nothing. The script detects that case and skips both checks rather than reporting figures that look like verdicts — a transparency reading of 0% on deliberately baked-in artwork previously produced the advice "the mark is too solid, remove a filled area", which would have meant damaging a perfectly good SVG.
-
-To opt out of Liquid Glass entirely and control the background directly, set `flatten: true` on the iOS and Android outputs in the script. `BACKDROP` is then baked in, the saturation of the mark stops mattering, and the checks turn themselves off.
+Not yet confirmed on a home screen: whether the recoloured icon gets the treatment at all.
 
 ## Deployment
 
