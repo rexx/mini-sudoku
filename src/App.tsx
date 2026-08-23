@@ -519,10 +519,30 @@ export default function App() {
         </div>
       </header>
 
+      {/* Live Status Message Display. Height is reserved unconditionally so an
+          appearing or clearing message never shifts the board or the controls. */}
+      <div className="shrink-0 h-7 sm:h-8 px-4 flex items-center justify-center">
+        <p
+          id="status-msg"
+          className={`text-sm sm:text-base font-black uppercase tracking-tight transition-colors ${
+            checkedResult?.isCorrect
+              ? 'text-emerald-500'
+              : checkedResult?.errorCount
+              ? 'text-rose-500'
+              : isLight
+              ? 'text-slate-400'
+              : 'text-slate-600'
+          }`}
+          aria-live="polite"
+        >
+          {statusDisplayText}
+        </p>
+      </div>
+
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col md:flex-row items-center justify-center px-4 sm:px-8 lg:px-10 py-4 sm:py-6 gap-6 md:gap-12 lg:gap-16 max-w-6xl mx-auto w-full">
+      <main className="flex-1 min-h-0 flex flex-col md:flex-row items-center justify-center px-4 sm:px-8 lg:px-10 py-4 sm:py-6 gap-6 md:gap-12 lg:gap-16 max-w-6xl mx-auto w-full">
         {/* 4x4 Grid Board structured as 2x2 boxes */}
-        <div className={`w-full max-w-[340px] sm:max-w-[400px] md:max-w-[440px] aspect-square grid grid-cols-2 grid-rows-2 gap-2 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl border shadow-2xl shrink-0 transition-colors ${
+        <div className={`w-full max-w-[min(340px,42dvh)] sm:max-w-[min(400px,44dvh)] md:max-w-[440px] aspect-square grid grid-cols-2 grid-rows-2 gap-2 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl border shadow-2xl shrink-0 transition-colors ${
           isLight
             ? 'bg-slate-300/80 border-slate-300 shadow-slate-200'
             : 'bg-slate-800 border-slate-800 shadow-2xl'
@@ -670,24 +690,6 @@ export default function App() {
             <Plus size={20} className="stroke-[2.5]" />
             <span>{t.newGame}</span>
           </button>
-        </div>
-
-        {/* Live Status Message Display */}
-        <div className="text-center sm:text-right w-full sm:w-auto">
-          <p
-            id="status-msg"
-            className={`text-base sm:text-xl md:text-2xl font-black uppercase tracking-tight transition-colors ${
-              checkedResult?.isCorrect
-                ? 'text-emerald-500'
-                : checkedResult?.errorCount
-                ? 'text-rose-500'
-                : isLight
-                ? 'text-slate-400'
-                : 'text-slate-600'
-            }`}
-          >
-            {statusDisplayText}
-          </p>
         </div>
       </footer>
 
