@@ -1,29 +1,50 @@
-<!-- Source of every raster icon in public/; run `npm run icons:generate` after editing.
-     Geometry: the mark must stay inside the r=204.8 safe circle a maskable icon
-     may be cropped to. The 264px grid is centred on the 512 canvas, so its
-     corners sit at r=186.7; the 20px stroke pushes the outermost ink to
-     r=196.7, still inside that circle with no per-output inset needed.
-     Colour: the strokes must stay SATURATED. iOS derives the Liquid Glass
-     backdrop from the mark's own colours, so a desaturated mark makes it
-     generate a light backdrop the mark then disappears against. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Accent cell: reads as a solved square so the mark is a puzzle, not a bare grid. -->
-    <rect x="200" y="134" width="46" height="46" rx="9" fill="#34D399" />
+  <!-- Source of every raster icon in public/; run `npm run icons:generate` after
+       editing.
 
-    <!-- Cell dividers, thinner and deeper so they recede behind the frame. -->
-    <g stroke="#059669" stroke-width="10">
-      <path d="M190 124V388" />
-      <path d="M322 124V388" />
-      <path d="M124 190H388" />
-      <path d="M124 322H388" />
-    </g>
+       These notes sit inside the root element on purpose: libvips sniffs for
+       `<svg` within roughly the first kilobyte, and a preamble long enough to
+       push the tag past that makes sharp reject the file as an unsupported
+       format.
 
-    <!-- Outer frame and the 2x2 block dividers. -->
-    <g stroke="#10B981" stroke-width="20">
-      <rect x="124" y="124" width="264" height="264" rx="30" />
-      <path d="M256 124V388" />
-      <path d="M124 256H388" />
-    </g>
+       This exact geometry was checked on an iPhone home screen: iOS composites
+       it, generating a dark backdrop and edge lighting. Four earlier marks were
+       not - a near-white grid, a saturated grid, an enlarged grid and a solid
+       block all came back pressed flat onto a white tile.
+
+       Nothing measurable separates the two groups. Ink coverage, cavity count,
+       cavity area, cavity perimeter and connected-component count all overlap
+       across ten device observations, and four candidate rules built on them
+       were each falsified within a day. So treat the geometry below as a
+       verified sample rather than as an instance of a rule, and re-check on a
+       device after changing it. See
+       cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md for the
+       current state of that investigation.
+
+       The cells reach r=220 at their far corners, past the r=204.8 circle a
+       maskable icon may be cropped to. The generator shrinks the maskable
+       output on its own, so that circle is not a constraint here. -->
+  <g fill="#10B981">
+    <rect x="96"  y="96"  width="65" height="65" rx="14" />
+    <rect x="266" y="96"  width="65" height="65" rx="14" />
+    <rect x="351" y="96"  width="65" height="65" rx="14" />
+
+    <rect x="96"  y="181" width="65" height="65" rx="14" />
+    <rect x="181" y="181" width="65" height="65" rx="14" />
+    <rect x="266" y="181" width="65" height="65" rx="14" />
+    <rect x="351" y="181" width="65" height="65" rx="14" />
+
+    <rect x="96"  y="266" width="65" height="65" rx="14" />
+    <rect x="181" y="266" width="65" height="65" rx="14" />
+    <rect x="266" y="266" width="65" height="65" rx="14" />
+    <rect x="351" y="266" width="65" height="65" rx="14" />
+
+    <rect x="96"  y="351" width="65" height="65" rx="14" />
+    <rect x="181" y="351" width="65" height="65" rx="14" />
+    <rect x="266" y="351" width="65" height="65" rx="14" />
+    <rect x="351" y="351" width="65" height="65" rx="14" />
   </g>
+
+  <!-- Solved cell: reads as a puzzle in progress rather than an empty board. -->
+  <rect x="181" y="96" width="65" height="65" rx="14" fill="#A7F3D0" />
 </svg>

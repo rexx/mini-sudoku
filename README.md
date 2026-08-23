@@ -78,30 +78,43 @@ npm run icons:generate
 
 Edit the SVG, re-run the script, and commit the output — the Pages workflow does not generate icons.
 
-The script measures two properties of `apple-touch-icon.png`, because both failure modes are invisible in the build output and only surface on a device home screen:
+The script checks two things and reports a third:
 
-| Check | Threshold | If it warns |
+| Check | Range | If it warns |
 | --- | --- | --- |
-| Transparency | at least 76.3% | The mark may not get the iOS Liquid Glass treatment. Thin the strokes or remove a filled area. |
-| Mean saturation | at least 0.5 | The mark probably depends on a dark background existing. Saturate the stroke colours. |
+| Mean saturation | at least 0.5 | The mark probably depends on a dark background existing. Saturate the colours. |
+| Maskable safe circle | ink within r=40% | A circular launcher mask would clip the mark. Lower `scale` on the maskable output — the warning prints the value that fits. |
 
-Both only apply to a mark that ships transparent, which is the mode here. Setting `flatten: true` on the iOS and Android outputs bakes `BACKDROP` in instead, opts out of Liquid Glass, and turns both checks off — they measure nothing against an opaque icon.
+The maskable check measures the generated result rather than trusting `scale`, because reshaping `icon.svg` moves the outermost ink and nothing else would catch a `scale` that no longer buys back enough.
 
-Two rules for the artwork, both of which the current mark satisfies:
+The third figure — ink coverage, component count and cavity perimeter — is printed without a threshold, and that is deliberate.
 
-- **Avoid area fills.** A conservative default, not a mechanism.
-- **The mark must stand on its own,** because no backdrop is guaranteed. Verify by compositing the icon over white, iOS grey and near-black and confirming it reads on all three. This is what the saturation check proxies for: the mark was previously near-white at saturation 0.08 and vanished on a light tile; it now measures 0.92.
+### Why there is no rule for the iOS home screen
 
-If a tile comes out the wrong colour, colour is the lever — two things it is **not**:
+A web clip cannot declare icon layers the way a native app can, so iOS infers them from the alpha channel: it either composites the mark, generating a backdrop and edge lighting, or decides the image is finished and drops it on white. **A white tile means it was not composited.** The tile colour reads the result directly; no pixel measurement is needed to tell which happened.
 
-- Not the silhouette. The version that vanished and the current one have identical transparency, 83.0% each, so coverage cannot account for the difference; only the stroke colours changed. (`git show 72004ca:public/apple-touch-icon.png` to re-measure.)
-- Not `background_color` / `theme_color`. Both were already `#020617` in the very commit that shipped the light tile, so they demonstrably do not drive it.
+What decides it is not known. Ten marks were checked on one iPhone, five composited and five did not, and every property that could be measured overlaps across the two groups:
 
-Single sample, and the current icon is not device-confirmed, so this narrows where to look rather than establishing a rule.
+| | ink | components | cavities | cavity area | perimeter | |
+| --- | --- | --- | --- | --- | --- | --- |
+| pocket line art (another project) | 12.2% | 9 | 1 | 13.0% | 2.63 | composited |
+| same, recoloured to this palette | 12.2% | 9 | 1 | 13.0% | 2.63 | composited |
+| same, with a frame added | 25.8% | 10 | 2 | 49.4% | 7.87 | composited |
+| same, reduced to one component | 8.2% | 1 | 1 | 16.0% | 1.50 | composited |
+| **the current mark** | **24.1%** | **16** | **0** | **0.0%** | **0.00** | **composited** |
+| near-white 4x4 grid | 16.1% | 1 | 17 | 14.2% | 5.72 | flat on white |
+| the same grid, enlarged | 26.5% | 1 | 17 | 27.9% | 8.30 | flat on white |
+| grid with the frame removed | 14.9% | 1 | 4 | 7.7% | 2.13 | flat on white |
+| solid block | 39.3% | 1 | 0 | 0.0% | 0.00 | flat on white |
+| the same block in cyan | 39.3% | 1 | 0 | 0.0% | 0.00 | flat on white |
 
-For anything beyond those two rules — where the thresholds come from, what is still unexplained, and how to verify on a device — read `docs/app-icon-ios-liquid-glass.md` in the Cozy-Pocket project. Read it rather than expecting this section to be current: it has already carried a claim that document later retracted.
+Two marks measuring 0.00 perimeter sit on opposite sides. So do two at 0 cavities and two at 1 component. Four rules were built on these numbers over one day — a transparency floor, an edge-margin band, a cavity-area limit, a cavity-perimeter limit — and a device falsified each one. Colour is ruled out (the pocket art composites in this palette; this mark stayed flat in cyan), and so is the page: both marks behave the same whether the page declares `sizes`, declares `apple-mobile-web-app-capable`, or neither.
 
-Not yet confirmed on a home screen: whether the recoloured icon gets the treatment at all.
+**So the geometry in `icon.svg` is a verified sample, not an instance of a rule.** `public/apple-touch-icon.png` is byte-identical to the file that produced a composited tile. Change the shape and that evidence no longer applies: re-check by adding the page to a home screen and looking at the tile.
+
+Serving variants from separate URLs is the cheap way to do that — each becomes its own web clip, so several can sit on one home screen at once and none of them collides with the icon cache that otherwise forces a delete-and-re-add between rounds.
+
+For the state of the wider investigation, read `docs/app-icon-ios-liquid-glass.md` in the Cozy-Pocket project. Read it rather than expecting this section to be current: it has already carried claims that document later retracted.
 
 ## Deployment
 

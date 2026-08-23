@@ -26,41 +26,46 @@ const RASTER_DENSITY = 384;
 //   true  - bake BACKDROP in. Browser tab bars and Android's adaptive-icon mask
 //           provide no generated backdrop, so the line art needs its own.
 //
-// A transparent output therefore only works if the mark stays legible against
-// whatever backdrop iOS supplies. One home-screen observation: a near-white mark
-// (mean saturation 0.08) rendered almost invisible on a light tile. Hence the
-// saturation check at the end of this script - it guards the same output the
-// transparency check does. See the MIN_SATURATION comment for what that
-// observation does and does not establish.
+// `scale` shrinks the mark inside its canvas before the background is applied.
+// icon.svg is drawn to the edge margin iOS needs and overflows the r=204.8 safe
+// circle a maskable icon may be cropped to; the maskable output buys that circle
+// back here instead, so the two constraints do not have to be reconciled in the
+// artwork. Every other output wants the mark at full size.
 const OUTPUTS = [
   { out: 'favicon-16x16.png', size: 16, flatten: true },
   { out: 'favicon-32x32.png', size: 32, flatten: true },
   { out: 'apple-touch-icon.png', size: 180, flatten: false },
   { out: 'android-chrome-192x192.png', size: 192, flatten: false },
   { out: 'android-chrome-512x512.png', size: 512, flatten: false },
-  { out: 'icon-maskable-512.png', size: 512, flatten: true },
+  { out: 'icon-maskable-512.png', size: 512, flatten: true, scale: 0.92 },
 ];
 
 // favicon.ico carries several sizes in one file, for the surfaces that still
 // request it (bookmarks, some browser chrome).
 const ICO_SIZES = [16, 32, 48];
 
-// A smoke detector, not a spec: the lowest coverage observed to still get the
-// iOS Liquid Glass treatment. Carried over from Cozy-Pocket. Clearing it does
-// not guarantee the effect, and why lower values lose it is unresolved there, so
-// treat "avoid area fills" as a conservative default rather than a rule.
+// No threshold guards the property that actually decides this. Across ten
+// home-screen observations, ink coverage, cavity count, cavity area, cavity
+// perimeter and connected-component count all overlap between the marks iOS
+// composited and the marks it pressed onto white - two icons measuring 0.00
+// perimeter landed on opposite sides. Four rules built on those numbers were
+// each falsified within a day of being written.
 //
-// Read cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md before
-// reshaping the artwork. Do not expect this comment to substitute for it: an
-// earlier version restated that document's reasoning and went stale when the
-// document retracted it. Only the constant lives here now.
-const MIN_TRANSPARENT_RATIO = 0.763;
+// So the figures below are printed for comparison against a known-good mark,
+// not checked against a limit. The only reliable test is a device.
+// Pixels at or above this alpha count as ink. Antialiased edges land either
+// side of it, but the value is pinned by a real sample: an icon whose interior
+// was filled at 15% opacity failed on a device, and only a threshold in this
+// range scores that fill as a cavity rather than as ink.
+const INK_ALPHA = 128;
 
-// Mean saturation of the mark's opaque pixels. This project's own threshold,
-// added after a near-white mark at saturation 0.08 vanished against a light
-// home-screen tile. No backdrop is guaranteed, so the mark has to hold up on its
-// own; saturation is a cheap stand-in for that, and needs no theory about what
-// iOS does.
+// Mean saturation of the mark's opaque pixels. A legibility guard, not a
+// backdrop control: no backdrop is guaranteed on any surface, so the line art
+// has to read on a light tile as well as a dark one, and a near-white mark at
+// 0.08 did not.
+//
+// It says nothing about which backdrop iOS picks. Marks at 0.08 and at 0.92 both
+// landed on white, while a mark at 0.86 got a dark one.
 //
 // Passing this is not the real test. Composite new artwork over white, iOS grey
 // and near-black and confirm it reads on all three.
@@ -68,11 +73,39 @@ const MIN_SATURATION = 0.5;
 
 const COVERAGE_PROBE = 'apple-touch-icon.png';
 
+// Radius of the circle a maskable icon may be cropped to, as a fraction of its
+// width. The maskable output's `scale` is tuned to keep the mark inside it, so
+// the result gets measured rather than the constant trusted: reshaping icon.svg
+// moves the outermost ink and nothing else would catch a scale that no longer
+// buys enough back.
+const MASKABLE_SAFE_RADIUS = 0.4;
+
+const MASKABLE_PROBE = 'icon-maskable-512.png';
+
 const SOURCE = 'icon.svg';
 
-function render({ size, flatten }) {
-  const pipeline = sharp(path.join(publicDir, SOURCE), { density: RASTER_DENSITY })
-    .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } });
+function render({ size, flatten, scale = 1 }) {
+  const inner = Math.round(size * scale);
+  const pad = size - inner;
+  const clear = { r: 0, g: 0, b: 0, alpha: 0 };
+  // sharp orders its pipeline internally rather than by call order, and flatten
+  // runs before extend - so the padding has to carry the final background
+  // itself, or a flattened output ends up with a transparent border.
+  const surround = flatten ? BACKDROP : clear;
+
+  let pipeline = sharp(path.join(publicDir, SOURCE), { density: RASTER_DENSITY })
+    .resize(inner, inner, { fit: 'contain', background: clear });
+
+  if (pad > 0) {
+    const before = Math.floor(pad / 2);
+    pipeline = pipeline.extend({
+      top: before,
+      left: before,
+      bottom: pad - before,
+      right: pad - before,
+      background: surround,
+    });
+  }
 
   return (flatten ? pipeline.flatten({ background: BACKDROP }) : pipeline).png();
 }
@@ -122,19 +155,52 @@ const icoImages = await Promise.all(
 await writeFile(path.join(publicDir, 'favicon.ico'), buildIco(icoImages));
 console.log(`${'favicon.ico'.padEnd(28)} ${ICO_SIZES.join('/')}px  ${BACKDROP}`);
 
-// Two properties decide whether iOS's generated backdrop works, so measure both
-// in one pass.
+// Measure the maskable mark from a transparent render of the same geometry.
+// The shipped file is flattened, so alpha is the only way to tell ink from
+// backdrop without assuming the artwork never uses BACKDROP as a colour.
+const maskable = OUTPUTS.find((output) => output.out === MASKABLE_PROBE);
+
+if (maskable) {
+  const probe = await render({ ...maskable, flatten: false }).raw().toBuffer({ resolveWithObject: true });
+  const { data: bytes, info: shape } = probe;
+  const centre = shape.width / 2;
+  let inkRadius = 0;
+
+  for (let y = 0; y < shape.height; y += 1) {
+    for (let x = 0; x < shape.width; x += 1) {
+      if (bytes[(y * shape.width + x) * shape.channels + 3] === 0) continue;
+      const radius = Math.hypot(x + 0.5 - centre, y + 0.5 - centre);
+      if (radius > inkRadius) inkRadius = radius;
+    }
+  }
+
+  const safeRadius = shape.width * MASKABLE_SAFE_RADIUS;
+  console.log(
+    `\n${MASKABLE_PROBE}  ink reaches r=${inkRadius.toFixed(0)} of the r=${safeRadius.toFixed(0)} safe circle`,
+  );
+
+  if (inkRadius > safeRadius) {
+    const fits = (maskable.scale ?? 1) * (safeRadius / inkRadius);
+    console.log(
+      `WARNING  outside the safe circle, so a circular mask would clip the mark. Set\n` +
+        `         scale to ${fits.toFixed(2)} or below for ${MASKABLE_PROBE} in OUTPUTS. Shrink\n` +
+        `         this one output, not ${SOURCE} - the shape there is a device-verified sample\n` +
+        `         and resizing it invalidates that check.`,
+    );
+  }
+}
+
+// Two properties of the shipped mark decide how it lands on a home screen, so
+// measure both in one pass.
 //
 // BOTH only mean anything for an output that ships transparent. A flattened
-// output already carries BACKDROP, so iOS generates no backdrop for it: the
-// transparency figure is 0 by construction and the saturation figure describes
-// a mark nothing is derived from. Reporting them anyway produced actively wrong
-// advice - "the mark is too solid, remove a filled area" against artwork whose
-// backdrop was deliberately baked in - so skip both when the probe is flattened.
+// output has no cavities left to trace and no backdrop derived from it, so the
+// figures describe nothing. Reporting them anyway produced actively wrong advice
+// against artwork whose backdrop was deliberately baked in, so skip both when
+// the probe is flattened.
 //
-// An alpha channel alone proves nothing for the first one - `sips -g hasAlpha`
-// reports yes for icons that have no transparent pixel at all - so count the
-// actual values.
+// An alpha channel alone proves nothing here - `sips -g hasAlpha` reports yes
+// for icons that have no transparent pixel at all - so walk the actual values.
 const probeIsTransparent = OUTPUTS.some(
   (output) => output.out === COVERAGE_PROBE && !output.flatten,
 );
@@ -142,7 +208,7 @@ const probeIsTransparent = OUTPUTS.some(
 if (!probeIsTransparent) {
   console.log(
     `\n${COVERAGE_PROBE} is flattened, so it opts out of the iOS Liquid Glass treatment.\n` +
-      'Neither the transparency nor the saturation check applies; skipping both.',
+      'Neither the perimeter nor the saturation check applies; skipping both.',
   );
   process.exit(0);
 }
@@ -152,51 +218,116 @@ const { data, info } = await sharp(path.join(publicDir, COVERAGE_PROBE))
   .raw()
   .toBuffer({ resolveWithObject: true });
 
-let transparent = 0;
+const { width: W, height: H, channels } = info;
+const isCavity = (p) => data[p * channels + 3] < INK_ALPHA;
+
+// Flood fill inward from the border. Whatever transparency it cannot reach is
+// enclosed by the mark.
+const reached = new Uint8Array(W * H);
+const queue = [];
+
+for (let x = 0; x < W; x += 1) queue.push(x, x + (H - 1) * W);
+for (let y = 0; y < H; y += 1) queue.push(y * W, W - 1 + y * W);
+
+while (queue.length > 0) {
+  const p = queue.pop();
+  if (reached[p] === 1) continue;
+  if (isCavity(p) === false) continue;
+  reached[p] = 1;
+
+  const x = p % W;
+  const y = (p - x) / W;
+  if (x > 0) queue.push(p - 1);
+  if (x < W - 1) queue.push(p + 1);
+  if (y > 0) queue.push(p - W);
+  if (y < H - 1) queue.push(p + W);
+}
+
+let boundary = 0;
 let saturationTotal = 0;
 let opaque = 0;
+let inkPixels = 0;
 
-for (let i = 0; i < data.length; i += info.channels) {
-  if (data[i + 3] === 0) {
-    transparent += 1;
+for (let p = 0; p < W * H; p += 1) {
+  const alpha = data[p * channels + 3];
+
+  if (isCavity(p)) {
+    if (reached[p] === 1) continue;
+    const x = p % W;
+    const y = (p - x) / W;
+    const ink = (q) => isCavity(q) === false;
+    if (
+      (x > 0 && ink(p - 1)) ||
+      (x < W - 1 && ink(p + 1)) ||
+      (y > 0 && ink(p - W)) ||
+      (y < H - 1 && ink(p + W))
+    ) {
+      boundary += 1;
+    }
     continue;
   }
-  // Ignore edge pixels: antialiasing blends them toward transparent, which
-  // drags their saturation down and would understate the mark's real colour.
-  if (data[i + 3] < 200) continue;
 
+  inkPixels += 1;
+
+  // Antialiasing blends edge pixels toward transparent, dragging their
+  // saturation down, so colour is read from solid interior pixels only.
+  if (alpha < 200) continue;
+
+  const i = p * channels;
   const max = Math.max(data[i], data[i + 1], data[i + 2]);
   const min = Math.min(data[i], data[i + 1], data[i + 2]);
   saturationTotal += max === 0 ? 0 : (max - min) / max;
   opaque += 1;
 }
 
-const transparentRatio = transparent / (info.width * info.height);
+// Separate pieces of ink. Reported alongside the rest because it is the axis
+// two otherwise identical marks differed on, not because it predicts anything.
+const grouped = new Uint8Array(W * H);
+let components = 0;
+
+for (let seed = 0; seed < W * H; seed += 1) {
+  if (grouped[seed] === 1 || isCavity(seed)) continue;
+  components += 1;
+  grouped[seed] = 1;
+  const walk = [seed];
+
+  while (walk.length > 0) {
+    const p = walk.pop();
+    const x = p % W;
+    const y = (p - x) / W;
+    const neighbours = [];
+    if (x > 0) neighbours.push(p - 1);
+    if (x < W - 1) neighbours.push(p + 1);
+    if (y > 0) neighbours.push(p - W);
+    if (y < H - 1) neighbours.push(p + W);
+    for (const q of neighbours) {
+      if (grouped[q] === 0 && isCavity(q) === false) {
+        grouped[q] = 1;
+        walk.push(q);
+      }
+    }
+  }
+}
+
+const innerPerimeter = boundary / W;
 const saturation = opaque === 0 ? 0 : saturationTotal / opaque;
 
 console.log(
-  `\n${COVERAGE_PROBE}  ${(transparentRatio * 100).toFixed(1)}% transparent, ` +
-    `mean saturation ${saturation.toFixed(2)}`,
+  `\n${COVERAGE_PROBE}  ${(inkPixels / (W * H) * 100).toFixed(1)}% ink, ` +
+    `${components} component${components === 1 ? '' : 's'}, ` +
+    `cavity perimeter ${innerPerimeter.toFixed(2)}, mean saturation ${saturation.toFixed(2)}`,
 );
-
-if (transparentRatio < MIN_TRANSPARENT_RATIO) {
-  console.log(
-    `WARNING  below the ${(MIN_TRANSPARENT_RATIO * 100).toFixed(1)}% transparency assumed to still get the iOS\n` +
-      `         Liquid Glass treatment. The mark is too solid: remove a filled area or thin\n` +
-      `         the strokes - shrinking it does not help much.`,
-  );
-}
 
 if (saturation < MIN_SATURATION) {
   console.log(
-    `WARNING  below the ${MIN_SATURATION} mean saturation needed for iOS to generate a DARK\n` +
-      `         backdrop. Seen on a home screen: at 0.08 the mark disappeared against a\n` +
-      `         light tile. Saturate the stroke\n` +
-      `         colours in ${SOURCE}, or set flatten: true to bake BACKDROP in and opt out\n` +
-      `         of Liquid Glass entirely.`,
+    `WARNING  below the ${MIN_SATURATION} mean saturation the mark needs to read with no\n` +
+      `         backdrop behind it. Seen on a home screen: at 0.08 the mark disappeared\n` +
+      `         against a light tile. Saturate the colours in ${SOURCE}, or set\n` +
+      `         flatten: true to bake BACKDROP in and opt out of Liquid Glass entirely.`,
   );
 }
 
-if (transparentRatio >= MIN_TRANSPARENT_RATIO && saturation >= MIN_SATURATION) {
-  console.log('Both above their thresholds. Neither predicts the backdrop iOS will pick:\nverify new artwork over a light and a dark backdrop before shipping it.');
-}
+console.log(
+  `Reference: the shape in ${SOURCE} measured 24.1% ink, 16 components, perimeter 0.00\n` +
+    'when a device confirmed iOS composites it. Numbers that drift from those describe\ndifferent artwork, not a worse one - add it to a home screen and look at the tile.',
+);
