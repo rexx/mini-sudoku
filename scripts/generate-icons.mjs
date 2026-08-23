@@ -17,10 +17,12 @@ const BACKDROP = '#020617';
 const RASTER_DENSITY = 384;
 
 // `flatten` decides who paints the background behind the mark:
-//   false - ship transparent pixels and let iOS supply the backdrop, which is
-//           what makes the mark eligible for Liquid Glass. Baking an opaque
-//           background in opts the icon out: the Cozy-Pocket notes record a
-//           fully opaque icon (0% transparent) getting no glass on device.
+//   false - ship transparent pixels. A web clip cannot declare icon layers the
+//           way a native app can, so alpha is the only cue iOS has for inferring
+//           them: opaque pixels read as foreground and the system supplies the
+//           backdrop and lighting. Baking an opaque background in leaves nothing
+//           to separate and the icon renders flat - observed on device at 0%
+//           transparency.
 //   true  - bake BACKDROP in. Browser tab bars and Android's adaptive-icon mask
 //           provide no generated backdrop, so the line art needs its own.
 //
@@ -45,16 +47,22 @@ const ICO_SIZES = [16, 32, 48];
 
 // A tripwire, not a spec. Carried over from Cozy-Pocket, whose notes record five
 // on-device samples behind it: 0% and ~62% got no glass, 76.3% and 86.5% did.
+// 62-76% is an unverified band.
 //
-// The ratio is a PROXY and inverting the two is the trap. Those notes record the
-// actual observed rule as "filling an enclosed area kills the effect",
-// independent of that fill's opacity - the coverage figure is a side effect of
-// doing so. A small enough shape can fill its interior, still clear this bar and
-// lose the effect anyway. So check the silhouette for area fills first and treat
-// this number as the second line of defence. 62-76% is an unverified band.
+// WHY the 62% cases failed is unresolved. Those notes were revised 2026-08-23 to
+// retract their own earlier answer ("filling an enclosed area kills it"): native
+// layered icons get the strongest glass at near-100% coverage with large solid
+// fills, so area fill cannot be the disabling factor. Three candidates remain
+// unseparated - coverage, too little edge margin, and the effect applying but
+// large fills hiding the generated backdrop. A controlled comparison is prepared
+// there, not yet run.
 //
-// Read that document before reshaping the artwork; this script only carries the
-// cheap proxy, not the reasoning.
+// So this number is a smoke detector with an unknown mechanism behind it, and
+// "avoid area fills" is a conservative default rather than a rule. Coverage also
+// does not generalise past the single-bitmap web clip path.
+//
+// Read that document before reshaping the artwork; do not trust this comment as
+// a substitute - it has already been wrong once by lagging the source.
 // See cozy-pocket/Cozy-Pocket/docs/app-icon-ios-liquid-glass.md
 const MIN_TRANSPARENT_RATIO = 0.763;
 

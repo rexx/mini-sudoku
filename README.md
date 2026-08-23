@@ -85,13 +85,21 @@ The script measures two properties of `apple-touch-icon.png` and warns on either
 
 Both are proxies, not rules, and the distinction matters in different ways for each.
 
-**Transparency.** The threshold and the reasoning behind it come from the Cozy-Pocket project's Liquid Glass notes (`docs/app-icon-ios-liquid-glass.md` in that repository, not linked here because it lives outside this one), which record five on-device samples: 0% and roughly 62% got no glass, 76.3% and 86.5% did. Read that document before changing the artwork's silhouette, because it also records the rule the ratio only stands in for: what actually killed the effect was **filling an enclosed area**, independent of that fill's opacity, and the coverage figure is a side effect of doing so. A small enough shape can fill its interior, still clear 76.3%, and lose the effect anyway. Check for area fills first and treat the ratio as the second line of defence — 62–76% is an unverified band.
+**Transparency.** The threshold comes from the Cozy-Pocket project's Liquid Glass notes (`docs/app-icon-ios-liquid-glass.md` in that repository, not linked here because it lives outside this one), which record five on-device samples: 0% and roughly 62% got no glass, 76.3% and 86.5% did.
+
+Read that document before reshaping the artwork, and read it rather than trusting this summary, because **why** the 62% cases failed is openly unresolved there. Those notes were revised on 2026-08-23 to retract their own earlier explanation: native layered icons get the strongest glass with near-100% coverage and large solid fills, so area fill cannot be what disables it. Three candidate causes for the PWA-path failures remain unseparated — coverage, insufficient edge margin, and the possibility that the effect applies but large fills hide the backdrop it generates. A controlled comparison is prepared there but has not been run.
+
+Practical consequence: avoid area fills as a **conservative default**, not as a rule with a known mechanism, and treat the ratio the same way. Note also that coverage does not generalise beyond the single-bitmap web clip path this project is on.
 
 **Saturation.** This threshold is local to this project, added after a mark at 83.0% transparency and mean saturation 0.08 rendered as near-invisible pale line art on a light home-screen tile. The referenced notes are silent on what colour backdrop iOS generates, so no mechanism is claimed here either; what they do state independently, as a design constraint, is that the mark must not depend on a background colour existing, since none is guaranteed. That is precisely the failure above, so saturation is used as a cheap proxy for "does this mark stand on its own".
 
 The fix follows from the constraint rather than from any theory about iOS: the current mark measures 0.92 and was checked by compositing it over white, iOS grey and near-black, where it reads on all three. Making the mark legible against any backdrop beats predicting which backdrop appears.
 
-Still unverified here: the recoloured icon has not been confirmed on a home screen. When checking it, follow §7 of the referenced notes — remove the old home-screen icon before re-adding it, since iOS caches web clip icons, and compare the Light, Dark, Clear and Tinted appearances rather than just one.
+Still unverified here: the recoloured icon has not been confirmed on a home screen. When checking it, follow the verification section of the referenced notes. Three things from it are easy to get wrong:
+
+- Remove the old home-screen icon before re-adding, since iOS caches web clip icons and will otherwise show the previous one. To compare several versions, host them at separate URLs and add each — that sidesteps the cache instead of fighting it.
+- Compare the Light, Dark, Clear and Tinted appearances, not one.
+- To tell a system-applied effect from highlights baked into the PNG, switch to Tinted: a layered icon re-renders and keeps its depth, while baked-in lighting flattens into a single colour.
 
 Both thresholds only apply to a mark that ships **transparent**, which is the mode this project uses. They measure how iOS will treat artwork it has to generate a backdrop for; against a flattened, fully opaque icon they measure nothing. The script detects that case and skips both checks rather than reporting figures that look like verdicts — a transparency reading of 0% on deliberately baked-in artwork previously produced the advice "the mark is too solid, remove a filled area", which would have meant damaging a perfectly good SVG.
 
