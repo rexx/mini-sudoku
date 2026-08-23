@@ -17,18 +17,19 @@ const BACKDROP = '#020617';
 const RASTER_DENSITY = 384;
 
 // `flatten` decides who paints the background behind the mark:
-//   false - ship transparent pixels. iOS reads the opaque pixels as the icon's
-//           foreground and generates its own backdrop plus Liquid Glass
-//           lighting; baking in an opaque background opts the icon out of that.
+//   false - ship transparent pixels and let iOS supply the backdrop, which is
+//           what makes the mark eligible for Liquid Glass. Baking an opaque
+//           background in is understood to opt the icon out of that treatment
+//           (inherited from the Cozy-Pocket script, not verified here).
 //   true  - bake BACKDROP in. Browser tab bars and Android's adaptive-icon mask
 //           provide no generated backdrop, so the line art needs its own.
 //
-// The generated backdrop is derived from the mark's own colours, so a
-// transparent output only works if the mark is SATURATED. Measured on device:
-// a near-white mark (mean saturation 0.08) made iOS generate a light backdrop,
-// which rendered the icon almost invisible; a saturated one (0.86) got a dark
-// tinted backdrop. Hence the saturation check at the end of this script - it
-// guards the same output the transparency check does.
+// A transparent output therefore only works if the mark stays legible against
+// whatever backdrop iOS supplies. One home-screen observation: a near-white mark
+// (mean saturation 0.08) rendered almost invisible on a light tile. Hence the
+// saturation check at the end of this script - it guards the same output the
+// transparency check does. See the MIN_SATURATION comment for what that
+// observation does and does not establish.
 const OUTPUTS = [
   { out: 'favicon-16x16.png', size: 16, flatten: true },
   { out: 'favicon-32x32.png', size: 32, flatten: true },
@@ -42,16 +43,27 @@ const OUTPUTS = [
 // request it (bookmarks, some browser chrome).
 const ICO_SIZES = [16, 32, 48];
 
-// A tripwire, not a spec. iOS only applies Liquid Glass to a mark thin enough to
-// leave most of the canvas transparent; this ratio is the cheapest proxy for the
-// real rule, which is "do not fill enclosed areas". Warn below the lowest ratio
-// observed on device to still get the treatment.
+// A tripwire, not a spec. The premise is that iOS only applies Liquid Glass to a
+// mark thin enough to leave most of the canvas transparent, and that this ratio
+// proxies the real rule, "do not fill enclosed areas".
+//
+// Inherited unverified from the Cozy-Pocket script this one was adapted from.
+// Nothing in this project reproduced it on a device, so treat the figure as a
+// convention carried over, not as a measurement.
 const MIN_TRANSPARENT_RATIO = 0.763;
 
-// Mean saturation of the mark's opaque pixels, which is what iOS builds its
-// generated backdrop from. Two on-device data points: 0.86 produced a dark
-// tinted backdrop, 0.08 produced a light backdrop that near-white line art
-// vanished against. The threshold sits between them, nearer the failure.
+// Mean saturation of the mark's opaque pixels.
+//
+// One failure was actually seen on a home screen: at 0.08 the mark rendered as
+// near-invisible pale line art on a light tile. The contrasting case, 0.86,
+// was reported to render dark, but only its icon file was measured here.
+//
+// Why they differ is NOT established - "iOS derives the backdrop from the mark's
+// colours" fits, but so does "iOS picks the backdrop by system appearance and a
+// mid-luminance mark survives either way". One screenshot cannot separate those,
+// so this is a guard against the one observed failure, not a model of iOS. The
+// durable fix is a mark legible on any backdrop; check new artwork by
+// compositing it over white, iOS grey and near-black.
 const MIN_SATURATION = 0.5;
 
 const COVERAGE_PROBE = 'apple-touch-icon.png';
@@ -169,7 +181,7 @@ console.log(
 
 if (transparentRatio < MIN_TRANSPARENT_RATIO) {
   console.log(
-    `WARNING  below the ${(MIN_TRANSPARENT_RATIO * 100).toFixed(1)}% transparency observed to still get the iOS\n` +
+    `WARNING  below the ${(MIN_TRANSPARENT_RATIO * 100).toFixed(1)}% transparency assumed to still get the iOS\n` +
       `         Liquid Glass treatment. The mark is too solid: remove a filled area or thin\n` +
       `         the strokes - shrinking it does not help much.`,
   );
@@ -178,13 +190,13 @@ if (transparentRatio < MIN_TRANSPARENT_RATIO) {
 if (saturation < MIN_SATURATION) {
   console.log(
     `WARNING  below the ${MIN_SATURATION} mean saturation needed for iOS to generate a DARK\n` +
-      `         backdrop. Measured on device: 0.86 produced a dark tinted backdrop, 0.08 a\n` +
-      `         light one that the mark then disappeared against. Saturate the stroke\n` +
+      `         backdrop. Seen on a home screen: at 0.08 the mark disappeared against a\n` +
+      `         light tile. Saturate the stroke\n` +
       `         colours in ${SOURCE}, or set flatten: true to bake BACKDROP in and opt out\n` +
       `         of Liquid Glass entirely.`,
   );
 }
 
 if (transparentRatio >= MIN_TRANSPARENT_RATIO && saturation >= MIN_SATURATION) {
-  console.log('Both within the range observed to produce a dark Liquid Glass icon.');
+  console.log('Both above their thresholds. Neither predicts the backdrop iOS will pick:\nverify new artwork over a light and a dark backdrop before shipping it.');
 }

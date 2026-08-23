@@ -83,9 +83,13 @@ The script measures two properties of `apple-touch-icon.png` and warns on either
 | Transparency | at least 76.3% | Whether iOS applies the Liquid Glass treatment at all. A mark that fills too much of the canvas is opted out. |
 | Mean saturation | at least 0.5 | Which backdrop iOS generates behind the mark. |
 
-The saturation threshold exists because transparency alone is not sufficient, which is easy to get wrong: the icon qualified for Liquid Glass and still rendered as near-invisible pale line art, because iOS derives the generated backdrop from the mark's own colours. Two on-device data points bracket the threshold — mean saturation 0.86 produced a dark tinted backdrop, 0.08 produced a light backdrop that near-white strokes disappeared against. The current mark measures 0.92.
+The saturation threshold exists because transparency alone is not sufficient. What is directly evidenced is one home-screen observation: a mark at 83.0% transparency and mean saturation 0.08 cleared the transparency bar and still rendered as near-invisible pale line art on a light tile. The comparison case, Cozy-Pocket at mean saturation 0.86, was reported to render dark; only its icon file was measured here, not its tile.
 
-Keeping the mark legible against a light backdrop as well as a dark one is worth more than betting on which one iOS picks.
+Why the two differ is **not** established. Deriving the generated backdrop from the mark's own colours fits both cases, but so does a backdrop chosen by system appearance, with Cozy-Pocket's mid-luminance cyan simply staying legible either way. One screenshot cannot separate those.
+
+The fix does not depend on which explanation is right, and that is the point: the current mark measures 0.92 and was checked by compositing it over white, iOS grey and near-black, where it reads clearly on all three. Making the mark legible against any backdrop beats predicting which backdrop appears. `MIN_SATURATION` is a tripwire for the one failure actually seen, not a model of iOS.
+
+Two inherited claims are worth flagging as unverified here: the 76.3% transparency figure comes from the Cozy-Pocket script this one was adapted from, and the notion that a fully opaque icon is excluded from Liquid Glass comes from a comment in that same script. Neither was reproduced on a device for this project. Nor has the recoloured icon itself been confirmed on a home screen yet.
 
 Both thresholds only apply to a mark that ships **transparent**, which is the mode this project uses. They measure how iOS will treat artwork it has to generate a backdrop for; against a flattened, fully opaque icon they measure nothing. The script detects that case and skips both checks rather than reporting figures that look like verdicts — a transparency reading of 0% on deliberately baked-in artwork previously produced the advice "the mark is too solid, remove a filled area", which would have meant damaging a perfectly good SVG.
 
