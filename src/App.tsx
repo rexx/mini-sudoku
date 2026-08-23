@@ -467,7 +467,7 @@ export default function App() {
   };
 
   return (
-    <div className={`w-full min-h-screen flex flex-col font-sans select-none antialiased justify-between transition-colors duration-200 ${
+    <div className={`w-full h-full overflow-hidden flex flex-col font-sans select-none antialiased justify-between transition-colors duration-200 ${
       isLight ? 'bg-slate-100 text-slate-900' : 'bg-slate-950 text-slate-100'
     }`}>
       {/* Top Header with Bold Typography and Single Options Button */}
@@ -589,7 +589,7 @@ export default function App() {
         </div>
 
         {/* Side Controls Section */}
-        <div className="flex flex-col gap-4 sm:gap-5 w-full max-w-[340px] sm:max-w-[400px] md:w-64 md:max-w-none">
+        <div className="flex flex-col gap-4 sm:gap-5 w-full max-w-[min(340px,42dvh)] sm:max-w-[min(400px,44dvh)] md:w-64 md:max-w-none">
           {/* Input Values Keypad (1, 2, 3, 4) */}
           <section>
             <div className="grid grid-cols-4 md:grid-cols-2 gap-2">
@@ -660,7 +660,7 @@ export default function App() {
       </main>
 
       {/* Footer Action Bar with CHECK and NEW buttons */}
-      <footer className={`px-4 sm:px-8 lg:px-10 py-5 sm:py-7 border-t flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 max-w-6xl mx-auto w-full transition-colors ${
+      <footer className={`px-4 sm:px-8 lg:px-10 py-4 sm:py-6 border-t flex justify-center items-center shrink-0 max-w-6xl mx-auto w-full transition-colors ${
         isLight ? 'border-slate-200 bg-white/50' : 'border-slate-800/90'
       }`}>
         <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">

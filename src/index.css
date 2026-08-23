@@ -26,4 +26,13 @@
     -webkit-user-select: none;
     font-family: var(--font-sans);
   }
+
+  /* The board, keypad and action bar are sized to always fit one viewport, so
+     every axis is locked: no document scrolling and no rubber-band overscroll.
+     Modals keep their own inner overflow-y-auto for long option lists. */
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }

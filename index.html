@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
     <title>4×4 Sudoku | 4×4 數獨</title>
     <meta name="description" content="Clean and focused 4x4 Sudoku puzzle game with difficulty selection and answer verification. Works fully offline." />
     <meta property="og:title" content="4×4 Sudoku" />
@@ -29,6 +29,18 @@
       gtag('js', new Date());
 
       gtag('config', 'G-MZDCQ8P6ZE');
+    </script>
+
+    <!-- Safari ignores user-scalable=no in the viewport tag, so pinch-to-zoom is
+         refused here instead. The board is a fixed-size, fully visible layout;
+         zooming or scrolling it only ever pushes controls out of view. -->
+    <script>
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (type) {
+        document.addEventListener(type, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      document.addEventListener('touchmove', function (e) {
+        if (e.touches.length > 1) e.preventDefault();
+      }, { passive: false });
     </script>
 
     <!-- Inline so the dark backdrop and skeleton paint from the cached HTML
