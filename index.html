@@ -4,18 +4,68 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>4×4 Sudoku | 4×4 數獨</title>
-    <meta name="description" content="Clean and focused 4x4 Sudoku puzzle game with difficulty selection and answer verification." />
+    <meta name="description" content="Clean and focused 4x4 Sudoku puzzle game with difficulty selection and answer verification. Works fully offline." />
     <meta property="og:title" content="4×4 Sudoku" />
     <meta property="og:description" content="Clean and focused 4x4 Sudoku puzzle game." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@700;900&display=swap" rel="stylesheet">
+
+    <meta name="theme-color" content="#020617" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sudoku" />
+    <link rel="manifest" href="/mini-sudoku/manifest.json" />
+    <link rel="icon" href="/mini-sudoku/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="/mini-sudoku/icon.svg" />
+    <link rel="apple-touch-icon" href="/mini-sudoku/apple-touch-icon.png" />
+
+    <!-- Inline so the dark backdrop and skeleton paint from the cached HTML
+         alone, before the JS bundle is fetched or parsed. No external
+         stylesheet or webfont is referenced here: an offline cold start must
+         reach first paint with zero network requests. -->
+    <style>
+      html, body {
+        margin: 0;
+        background-color: #020617;
+      }
+      #boot-shell {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+      }
+      #boot-shell .grid-4x4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        width: 132px;
+      }
+      #boot-shell .grid-4x4 span {
+        aspect-ratio: 1;
+        border-radius: 6px;
+        background-color: #1e293b;
+        animation: boot-pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes boot-pulse {
+        0%, 100% { opacity: 0.35; }
+        50%      { opacity: 0.75; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-shell .grid-4x4 span { animation: none; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Removed by src/main.tsx once React has mounted. -->
+    <div id="boot-shell" aria-hidden="true">
+      <div class="grid-4x4">
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

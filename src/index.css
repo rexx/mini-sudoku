@@ -1,25 +1,29 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-display: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-  }
+/* Fonts resolve entirely from the OS: no webfont request, so first paint and
+   offline cold start need no network. Latin faces come first, then the
+   Traditional Chinese faces each platform ships, so mixed zh-TW/English
+   strings render in one consistent family per platform. */
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'PingFang TC', 'Microsoft JhengHei', monospace;
+  --font-display: system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'PingFang TC', 'Microsoft JhengHei',
+    'Noto Sans TC', sans-serif;
+}
 
+@layer base {
+  /* Painted before any JS runs, and matched by the boot shell in index.html,
+     so a cold start shows the app's dark background instead of a white flash.
+     Keep in sync with theme_color in public/manifest.json. */
   html, body {
+    background-color: #020617;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     -webkit-user-select: none;
     font-family: var(--font-sans);
   }
-}
-
-.font-display {
-  font-family: 'Space Grotesk', 'Plus Jakarta Sans', system-ui, sans-serif;
-}
-
-.font-mono {
-  font-family: 'JetBrains Mono', monospace;
 }

@@ -1,0 +1,26 @@
+<!-- Source of every raster icon in public/; run `npm run icons:generate` after editing.
+     Geometry constraint: the mark must stay inside the r=204.8 safe circle a
+     maskable icon may be cropped to. The 264px grid is centred on the 512
+     canvas, so its corners sit at r=186.7; the 20px stroke pushes the outermost
+     ink to r=196.7, still inside that circle with no per-output inset needed. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <g fill="none" stroke="#F1F5F9" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Accent cell: reads as a solved square so the mark is a puzzle, not a bare grid. -->
+    <rect x="200" y="134" width="46" height="46" rx="9" fill="#10B981" stroke="none" />
+
+    <!-- Cell dividers, thinner than the block dividers. -->
+    <g stroke-width="10">
+      <path d="M190 124V388" />
+      <path d="M322 124V388" />
+      <path d="M124 190H388" />
+      <path d="M124 322H388" />
+    </g>
+
+    <!-- Outer frame and the 2x2 block dividers. -->
+    <g stroke-width="20">
+      <rect x="124" y="124" width="264" height="264" rx="30" />
+      <path d="M256 124V388" />
+      <path d="M124 256H388" />
+    </g>
+  </g>
+</svg>
