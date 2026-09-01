@@ -8,3 +8,7 @@ coverage/
 
 # Agent session worktrees
 .claude/worktrees/
+
+# Local reference material: the AI Studio export this repo started from.
+# Not part of the build.
+local-reference
